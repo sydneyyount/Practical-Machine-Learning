@@ -1,0 +1,83 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Sydney Yount"
+date: "2/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Background from Project Assignment Instructions
+
+"Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment"
+
+## Project Report
+To start the project, I downloaded the orignal training and test data sets into R which had 160 variables. From here, I performed data cleaning operations by removing columns in the data set that included NA values as well as the first 7 columns that included data that was not necessary for the prediction requested in the project such as the username and time stamp.Finally, I removed remove zero variance predictors from the data set as they would have ery limited unique values relative to the number of samples in the data set. The code below shows the process of getting and cleaning the data:
+
+``` {r cache=TRUE}
+trainingData <- read.csv('pml-training.csv')
+testingData <- read.csv('pml-testing.csv')
+
+library(caret)
+library(randomForest)
+
+trainData <-trainingData[,colSums(is.na(trainingData)) == 0]
+testData <- testingData[,colSums(is.na(testingData))==0]
+
+trainData <- trainData[,-c(1:7)]
+testData <- testData[,-c(1:7)]
+
+ind <- nearZeroVar(trainData)
+trainData <- trainData[,-ind]
+
+```
+I then split the training data into training and test sets. 70% of the data was allocated to training the model while the remaining 30% was for validating the model. This was accomplished by this section of code: 
+
+```{r cache=TRUE}
+inTrain <- createDataPartition(y=trainData$classe,p=0.7,list=FALSE)
+trainSet <- trainData[inTrain,]
+validateSet <- trainData[-inTrain,]
+```
+After this I began to train a random forest model on the training data set. I selected a random forest model due to their prediction accuracy across a wide range of problems and there tendency to be more accurate than a single decision tree. Additionally, the random forest model is suitable for the size of this dataset and the need to interpret the model is a major concern. A disadvantage of this model is that it is slow.To build the model, first I set a seed to 223 for reproducability. Then I created the model using this code:
+
+```{r cache=TRUE}
+set.seed(223)
+RFmod <- train(classe~.,data=trainSet,method="rf")
+
+```
+
+I then predicted the classes on the validation data set using this code:
+
+```{r cache=TRUE}
+RFPred <- predict(RFmod,validateSet)
+
+```
+
+To determine how well the model performed, I computed a confusion matrix 
+
+```{r cache=TRUE}
+cm <- confusionMatrix(RFPred,factor(validateSet$classe))
+
+```
+
+```{r cache=TRUE}
+cm
+```
+Based on the Confusion Matrix, this model was able to predict with an accuracy of 99%. We can further look at the plot of the random forest model. This shows that the model has an extremely high accuracy versus the number of randomly selected predictors. 
+```{r cache=TRUE}
+plot(RFmod)
+```
+
+
